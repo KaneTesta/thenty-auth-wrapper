@@ -1,1 +1,1 @@
-# thenty-react-auth-wrapper
+# thenty-auth-wrapper
