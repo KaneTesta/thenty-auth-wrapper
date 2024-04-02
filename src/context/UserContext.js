@@ -4,10 +4,11 @@ export const UserContext = createContext(null);
 
 export default function UserContextWrapper({ children }) {
 
-    // Todo
+    // TODO
     const login = () => null
     const logout = () => null
     
+    // TODO
     // On page change
     const validateToken = () => null
 
