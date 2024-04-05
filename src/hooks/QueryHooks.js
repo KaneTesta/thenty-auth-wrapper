@@ -15,23 +15,13 @@ export const formatResponse = (response) => {
 	};
 };
 
-export const getAxiosConfig = (baseURL, endpoint, body, method = "post", params, headers = {}) => {
-	return {
-		baseURL,
-		url: endpoint,
-		method: method,
-		headers,
-		params,
-		data: body,
-	};
-};
-
+// For queries on the client side that occur once on load
 export const useQueryEndpoint = (baseURL, endpoint, body, method, params, enabled = true) => {
 	const config = getAxiosConfig(baseURL, endpoint, body, method, params);
 
-	const { accessToken } = useUserContext();
+	const { accessToken, refreshToken } = useUserContext();
 	if (accessToken) config["headers"]["Authorization"] = `Bearer ${accessToken}`;
-	if (accessToken) config["headers"]["X-Refresh-Token"] = `Bearer ${accessToken}`;
+	if (accessToken) config["headers"]["X-Refresh-Token"] = `${refreshToken}`;
 
 	const response = useQuery([baseURL, endpoint, params, method], () => axios(config), {
 		enabled: enabled && Boolean(accessToken),
