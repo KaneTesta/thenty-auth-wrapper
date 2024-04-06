@@ -1,37 +1,53 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { LOGIN_USER } from "@/config/queries";
+import { LOGIN_USER, FETCH_TOKEN } from "@/config/queries";
 import axiosInstance from "@/config/axios";
+import { useRouter } from "next/router";
+import { callbackWithMinDuration } from "@/util";
 
-const fetchStorageKey = () => {
-	return `${process.env.NEXT_PUBLIC_APP_NAME}.authorization`;
+const fetchStorageKey = (storageKey) => {
+	return `${process.env.NEXT_PUBLIC_APP_NAME}.${storageKey}`;
 };
 
 export const UserContext = createContext(null);
 
 export default function UserContextWrapper({ children }) {
+	const [error, setError] = useState(null);
 	const [user, setUser] = useState(null);
 	const [accessToken, setAccessToken] = useState(null);
 	const [refreshToken, setRefreshToken] = useState(null);
-	const [error, setError] = useState(null);
+	const [isLoadingUser, setisLoadingUser] = useState(null);
 	const router = useRouter();
 
-	const fetchAuthorizationHeaders = () => {
+	const getStorageValue = (storageKey, key = null) => {
+		let storageItem = localStorage.getItem(fetchStorageKey(storageKey));
+
+		if (storageItem) {
+			storageItem = JSON.parse(storageItem);
+			if (key) return storageItem[key];
+			return storageItem;
+		}
+
+		return null;
+	};
+
+	const fetchAuthorizationHeaders = (aT = null, rT = null) => {
 		return {
-			Authorization: `Bearer ${accessToken}`,
-			"X-Refresh-Token": refreshToken,
+			Authorization: `Bearer ${aT ?? accessToken}`,
+			"X-Refresh-Token": rT ?? refreshToken,
 		};
 	};
 
-	const setAuthCookie = ({ data }) => {
+	const setAuthValue = ({ data }) => {
 		const { authorization, member } = data;
 		const { refresh, key } = authorization;
 
-		localStorage.setItem(fetchStorageKey(), JSON.stringify(authorization));
-		localStorage.setItem(fetchStorageKey(), JSON.stringify(member));
+		localStorage.setItem(fetchStorageKey("authorization"), JSON.stringify(authorization));
+		localStorage.setItem(fetchStorageKey("member"), JSON.stringify(member));
 
 		setAccessToken(key);
 		setRefreshToken(refresh);
 		setUser(member);
+		callbackWithMinDuration(() => setisLoadingUser(false), isLoadingUser);
 	};
 
 	/**
@@ -42,10 +58,13 @@ export default function UserContextWrapper({ children }) {
 	 * @param {string} options.password - The link to be attached to the modal.
 	 */
 	const login = (data) => {
-		const setAuthError = ({ message }) => setError(message);
+		const setAuthError = ({ message }) => {
+			setError(message);
+			setisLoadingUser(false);
+		};
 
 		axiosInstance({ ...LOGIN_USER, data })
-			.then(setAuthCookie)
+			.then(setAuthValue)
 			.catch(setAuthError);
 	};
 
@@ -53,31 +72,31 @@ export default function UserContextWrapper({ children }) {
 	 * Function to log out a user.
 	 */
 	const logout = () => {
-		localStorage.removeItem(fetchStorageKey("authorization"));
-		localStorage.removeItem(fetchStorageKey("member"));
-		setUser(null);
+		// localStorage.removeItem(fetchStorageKey("authorization"));
+		// localStorage.removeItem(fetchStorageKey("member"));
+		// setUser(null);
 	};
 
 	/**
 	 * Validate user token
 	 */
-	const validateToken = () => {
+	const validateToken = (headers = null) => {
 		const setAuthError = ({ message }) => {
 			setError(message);
 			logout();
+			setisLoadingUser(false);
 		};
 
-		axiosInstance({ ...FETCH_TOKEN, headers: fetchAuthorizationHeaders() })
+		setisLoadingUser(Date.now());
+		axiosInstance({ ...FETCH_TOKEN, headers: headers ?? fetchAuthorizationHeaders() })
 			.then(setAuthValue)
 			.catch(setAuthError);
 	};
 
 	useEffect(() => {
-		validateToken();
-
 		// Run token validation logic on every route change
 		const handleRouteChange = () => {
-			validateToken();
+			if (accessToken) validateToken();
 		};
 
 		router.events.on("routeChangeComplete", handleRouteChange);
@@ -88,8 +107,21 @@ export default function UserContextWrapper({ children }) {
 		};
 	}, [router]);
 
+	useEffect(() => {
+		const { key, refresh } = getStorageValue("authorization");
+		setUser(getStorageValue("member"));
+		setRefreshToken(refresh);
+		setAccessToken(key);
+
+		if (key) {
+			validateToken(fetchAuthorizationHeaders(key, refresh));
+		}
+	}, []);
+
 	return (
-		<UserContext.Provider value={(login, logout, user, refreshToken, accessToken)}>{children}</UserContext.Provider>
+		<UserContext.Provider value={{ login, logout, user, refreshToken, accessToken, isLoadingUser, error }}>
+			{children}
+		</UserContext.Provider>
 	);
 }
 
