@@ -72,9 +72,9 @@ export default function UserContextWrapper({ children }) {
 	 * Function to log out a user.
 	 */
 	const logout = () => {
-		// localStorage.removeItem(fetchStorageKey("authorization"));
-		// localStorage.removeItem(fetchStorageKey("member"));
-		// setUser(null);
+		localStorage.removeItem(fetchStorageKey("authorization"));
+		localStorage.removeItem(fetchStorageKey("member"));
+		setUser(null);
 	};
 
 	/**
