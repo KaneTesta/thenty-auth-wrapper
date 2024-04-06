@@ -1,5 +1,3 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
-
 ## Getting Started
 
 First, run the development server:
@@ -30,4 +28,3 @@ NEXT_PUBLIC_APP_SECRET_KEY= // Add your site's secret key here from thenty dashb
 ## AuthenticationWrapper
 
 Use the authentication wrapper to show the child components only when a user is logged in
-````
